@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "bd-fitness-challenge-2026",
+  "private_key_id": "b3b6f89d3aff7333cd2a54f6c5f4670780fbb7d7",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDLRvx0Qe15Ebp3\nZ1hiqaakGd7CcOoum4hS6jTKwpvMIol9Uc0jG/wrYDTazEliCQFBnDvhLS0YDLZw\ndHlA5y5dN0isfz/cUa0MgMlyJjT316fd17VYKuTfLu2U5OLbz/Ks19CHGWykGEnA\nnGbqe6WE78i+I5xeUqH9al5kp5j7vOwCjHymnXtXJxPasq+abSmFdJeod0VJzGxR\nlm07FMghoKCAHo6HrujXm3sN77Ut2aKhUiDavo7abKhXO/V7s0HyCvzmMIQwfP6d\nd+Zzk2W73Jd7zuuPM2mQQrCpTKLyswUS50SzjlHrZWSrL6JbGeuxK52km9paG/Dq\nK9hwQ5tZAgMBAAECggEAAWaRPhMvGd7MYxsl2j7j7GVWl0qo6jFFA3M+tZ0ClHyU\nQkUyXLNv2s5dRAuvVkn9cr2ft5bpUelw3ZweMqaRYO/nRcaI3SCqxN0JMZm8ADMB\nsaWzbVDJwm6xAi/a6W6QN9CF357KAbeCPnhDiN0sCaKtgqyX0XwIqJ8bHIv/gAyp\nIYE5OLQ2GcGqVIoYE2yBOgHAMymTlJGmX+m7rpDz7FGjCtpZF2VVhIjWdA0rm8tR\n4mNCZmXXTvVZDUa/OQYOpAVSysa/ckOprombthnbe8JWmroWLAOyfjIQm8p/5pE5\nuV/CyPmu/xqAfJ7j3+MF1ghf3j3EEKYlQ19s60Eu3QKBgQDkuy6TjG9CcH8aDapA\naf60JSBv+GL740hUBElFdap4wUKXlNYoNYJI4zRUGYr6kUGablipKSJbqm6X/3od\nag80mopOLyAd450zrZKVtAJoOenVjxUoSh+oSvX59QA1krVFkL+sDzH0xqh4qMsg\neQcLGvO9bLRRDOWAAVKKdLpObQKBgQDjgvU4qzA1d8ALjx3HLLNrSllSzAJsyHO0\nCmDvWCSHOrvreqOPvfQu6ifQyhJ4Wo51y2YzVYjbtK07bqwtUXv1a7tHrFyluGIA\n3PCneYobLd0b6L/Bh0vGRFMnBE3vmbo82uRz4mE7W7IKhx5WtTikWLTNM/w0cF3V\nHdkDoeP9HQKBgHwtky/PwmeTo62FVbT61qj+rwmbFEIkNpRGb3EiXJaKdZjN2Saj\nRkRD9Zji9Szrx24MEl5kUp7pfHlQ3f8yIWcxr3ya4RjZBfOUfEyCGfxz1Jt4vsfM\n1jsL11cIyEBNkdRerXDAHyMA5136Za0Ph99jloh0h8Co+7/u99zrWmpRAoGBAJ4i\nOC/bTPbc9S8Tmq8F8u9wDgXupwDVkxZg4F979GfJ+zQBWg5fCYpSVrpYud3Nk5ds\neOzVVvre6kmU8zfMm0xKRTHcK8lED1pqNxsw7z1U84qijCYH1DNK6kEETOdtAnWp\n74BcqRiI84c9w2ihLW2N+p1mtLX+JDotNNnBfKZBAoGBAKIK1d7lTvTbmZ5IBeYD\ngDEHRq1c2JugbuRmbzCVzJm84TzqjO36/pyV7/f2qrLuCxuggcV3qYnWYQlFHeI5\n42JYSfLDeVDHGE8fJ5o/YO8eVZ2dn6JkSN7xAWxX3DLt9NcUgDSUy880YcHLSFtM\nfaVOJ4NVHUXMIYk9Q/bpjRI5\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@bd-fitness-challenge-2026.iam.gserviceaccount.com",
+  "client_id": "100702650661836294214",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40bd-fitness-challenge-2026.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
