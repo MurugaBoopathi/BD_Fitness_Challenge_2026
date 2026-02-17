@@ -19,9 +19,12 @@ import os, json
 from firebase_admin import credentials, firestore, initialize_app, storage
 
 
-# Read Firebase credentials from local JSON file
-with open("bd-fitness-challenge-2026.json", "r") as f:
-  firebase_key = json.load(f)
+# Read Firebase credentials from environment variable (for deployment) or local JSON file
+if os.getenv("FIREBASE_CREDENTIALS"):
+  firebase_key = json.loads(os.getenv("FIREBASE_CREDENTIALS"))
+else:
+  with open("bd-fitness-challenge-2026.json", "r") as f:
+    firebase_key = json.load(f)
 
 cred = credentials.Certificate(firebase_key)
 firebase = initialize_app(cred, {

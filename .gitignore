@@ -6,7 +6,7 @@ __pycache__/
 .DS_Store
 
 # Firebase secret key
-serviceAccountKey.json
+bd-fitness-challenge-2026.json
 
 # Streamlit config and cache
 .streamlit/
