@@ -6,6 +6,73 @@ import plotly.express as px
 from firebase_config import db
 from utils.activity_utils import calculate_points, calculate_calories
 
+
+# --- Enhanced Custom CSS for fitness theme ---
+st.markdown(
+    """
+    <style>
+    body {
+        background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80');
+        background-size: cover;
+        background-attachment: fixed;
+    }
+    .stApp {
+        background: linear-gradient(135deg, rgba(255,255,255,0.97) 60%, #e3f2fd 100%);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 4px 32px rgba(0,0,0,0.13);
+    }
+    .stButton>button {
+        background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+        color: white;
+        border-radius: 10px;
+        font-weight: bold;
+        font-size: 1.1em;
+        padding: 0.5em 1.5em;
+        margin: 0.5em 0;
+        transition: background 0.2s;
+        box-shadow: 0 2px 8px rgba(67,206,162,0.15);
+    }
+    .stButton>button:hover {
+        background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%);
+    }
+    .stDataFrame, .stTable {
+        background: rgba(255,255,255,0.98);
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(67,206,162,0.10);
+        border: 2px solid #43cea2;
+    }
+    .stMetric {
+        background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%);
+        border-radius: 12px;
+        padding: 0.7em 0.7em;
+        margin-bottom: 0.7em;
+        color: #222;
+        font-weight: bold;
+        box-shadow: 0 1px 6px rgba(255,215,0,0.10);
+    }
+    .stSidebar {
+        background: #f5f5f5;
+        border-radius: 14px;
+        border: 2px solid #43cea2;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        color: #185a9d !important;
+        font-family: 'Segoe UI', 'Arial', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+    .stSubheader, .stHeader, .stMarkdown>div>p {
+        color: #185a9d !important;
+        font-weight: 600;
+    }
+    .block-container {
+        padding-top: 2rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 st.set_page_config(page_title="BD Fitness Challenge 2026 🌊", layout="wide")
 
 # ----------------- Utilities -----------------
@@ -45,7 +112,7 @@ def fetch_user_logs(uid: str):
         records.append(rec)
     return records
 
-def save_activity(uid, activity_type, distance, duration, date_str, doc_id=None):
+def save_activity(uid, activity_type, distance, duration, date_str, doc_id=None, attachment_url=None):
     points = float(calculate_points(activity_type, distance, duration))
     calories = float(calculate_calories(activity_type, duration))
     payload = {
@@ -57,6 +124,8 @@ def save_activity(uid, activity_type, distance, duration, date_str, doc_id=None)
         "date": date_str,
         "updated_at": datetime.now().isoformat()
     }
+    if attachment_url:
+        payload["attachment_url"] = attachment_url
     coll = db.collection("activities").document(uid).collection("logs")
     if doc_id:
         coll.document(doc_id).update(payload)
@@ -141,39 +210,324 @@ def heatmap_year(df_logs, year:int, value_col="points"):
     return pivot
 
 # ----------------- UI: main -----------------
+
+# --- Show attractive home page only when user not logged in ---
+if "user_name" not in st.session_state:
+    st.markdown(
+        """
+        <style>
+        .bd-hero-container {
+            max-width: 900px;
+            margin: 1em auto;
+            background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
+            border-radius: 24px;
+            box-shadow: 0 12px 48px rgba(67,206,162,0.20);
+            overflow: hidden;
+            position: relative;
+        }
+        .bd-hero-top {
+            background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+            padding: 1.2em 2em;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .bd-hero-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8em;
+        }
+        .bd-hero-logo-img {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            box-shadow: 0 4px 16px rgba(255,255,255,0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .bd-hero-logo-text h1 {
+            color: #fff !important;
+            font-size: 1.7em !important;
+            margin: 0 !important;
+            font-weight: 800 !important;
+            letter-spacing: 1px !important;
+        }
+        .bd-hero-logo-text p {
+            color: rgba(255,255,255,0.95) !important;
+            font-size: 1em !important;
+            margin: 0.2em 0 0 0 !important;
+            font-weight: 600 !important;
+        }
+        .bd-hero-badge {
+            background: rgba(255,255,255,0.25);
+            color: #fff;
+            padding: 0.4em 1em;
+            border-radius: 16px;
+            font-size: 0.95em;
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .bd-hero-content {
+            display: flex;
+            flex-direction: row;
+            gap: 1.5em;
+            padding: 1.5em 2em 1.3em 2em;
+            justify-content: center;
+        }
+        .bd-hero-left {
+            flex: 1;
+            max-width: 600px;
+        }
+        .bd-hero-welcome {
+            font-size: 1.3em;
+            color: #185a9d;
+            font-weight: 700;
+            margin-bottom: 0.4em;
+        }
+        .bd-hero-desc {
+            font-size: 0.95em;
+            color: #444;
+            margin-bottom: 0.8em;
+            line-height: 1.5;
+        }
+        .bd-hero-features {
+            display: flex;
+            flex-direction: row;
+            gap: 0.6em;
+            margin-bottom: 0.8em;
+            flex-wrap: wrap;
+        }
+        .bd-hero-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            background: rgba(67,206,162,0.08);
+            padding: 0.5em 0.7em;
+            border-radius: 8px;
+            border-left: 3px solid #43cea2;
+            flex: 1;
+            min-width: 120px;
+        }
+        .bd-hero-feature-icon {
+            font-size: 1.3em;
+        }
+        .bd-hero-feature-text {
+            font-size: 0.9em;
+            color: #185a9d;
+            font-weight: 600;
+        }
+        .bd-hero-quote {
+            font-size: 0.95em;
+            color: #43cea2;
+            font-weight: 600;
+            font-style: italic;
+            text-align: center;
+            margin: 0.6em 0;
+            padding: 0.6em;
+            background: rgba(67,206,162,0.08);
+            border-radius: 8px;
+        }
+        .bd-hero-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .bd-hero-illustration {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(67,206,162,0.25);
+            margin-bottom: 1.5em;
+        }
+        .bd-hero-stats {
+            display: flex;
+            gap: 1.5em;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .bd-hero-stat {
+            background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+            color: #fff;
+            padding: 1em 1.5em;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(67,206,162,0.25);
+            min-width: 100px;
+        }
+        .bd-hero-stat-value {
+            font-size: 2em;
+            font-weight: 700;
+        }
+        .bd-hero-stat-label {
+            font-size: 0.9em;
+            opacity: 0.95;
+            margin-top: 0.3em;
+        }
+        .bd-hero-form-container {
+            display: flex;
+            justify-content: center;
+            padding: 0 2em 1.5em 2em;
+        }
+        .bd-hero-form {
+            background: rgba(67,206,162,0.10);
+            padding: 1.2em;
+            border-radius: 12px;
+            border: 2px solid #43cea2;
+            box-shadow: 0 4px 16px rgba(67,206,162,0.15);
+            width: 100%;
+            max-width: 700px;
+        }
+        .bd-hero-form-container .stSelectbox,
+        .bd-hero-form-container .stTextInput {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .bd-hero-form-container .stButton {
+            display: flex;
+            justify-content: center;
+        }
+        .bd-hero-form-container .stButton>button {
+            max-width: 200px;
+        }
+        .bd-hero-form-title {
+            font-size: 1em;
+            color: #185a9d;
+            font-weight: 700;
+            margin-bottom: 0.5em;
+            text-align: center;
+        }
+        .bd-hero-form-desc {
+            font-size: 0.85em;
+            color: #444;
+            margin-bottom: 0.7em;
+            text-align: center;
+        }
+        </style>
+        <div class="bd-hero-container">
+            <div class="bd-hero-top">
+                <div class="bd-hero-logo">
+                    <img class="bd-hero-logo-img" src="https://cdn-icons-png.flaticon.com/512/1048/1048953.png" alt="Fitness">
+                    <div class="bd-hero-logo-text">
+                        <h1>BD Fitness Challenge 2026</h1>
+                        <p>Transform Your Health Journey</p>
+                    </div>
+                </div>
+                <div class="bd-hero-badge">🏆 Join the Challenge!</div>
+            </div>
+            <div class="bd-hero-content">
+                <div class="bd-hero-left">
+                    <div class="bd-hero-welcome">Welcome, Fitness Champion! 💪</div>
+                    <div class="bd-hero-desc">
+                        Track your daily activities, compete with your team, and achieve your fitness goals together!
+                    </div>
+                    <div class="bd-hero-features">
+                        <div class="bd-hero-feature">
+                            <div class="bd-hero-feature-icon">📊</div>
+                            <div class="bd-hero-feature-text">Track Activities</div>
+                        </div>
+                        <div class="bd-hero-feature">
+                            <div class="bd-hero-feature-icon">🏅</div>
+                            <div class="bd-hero-feature-text">Compete</div>
+                        </div>
+                        <div class="bd-hero-feature">
+                            <div class="bd-hero-feature-icon">📈</div>
+                            <div class="bd-hero-feature-text">Progress</div>
+                        </div>
+                    </div>
+                    <div class="bd-hero-quote">
+                        "The only bad workout is the one you didn't do."
+                    </div>
+                </div>
+            </div>
+            <div class="bd-hero-form-container">
+                <div class="bd-hero-form">
+                    <div class="bd-hero-form-title">🎯 Select Your Name to Continue</div>
+                    <div class="bd-hero-form-desc">Pick your name from the list below or type a new one</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Name selection (pre-populated list)
+    names_list = [
+        "Remya Rajaratnam (BD/SWD-BEA9)","Lokhsundar Balasubramaniam (BD/SWD-BEA9)",
+        "Madhanreyan V (BD/SWD-BEA9)","Paulin Nancy Pradeepa Prabhu (BD/SWD-BEA9)",
+        "Thamarai Govindasamy (BD/SWD-FSB6)","Prito Thamizh Selvan M (BD/SWD-BEA10)",
+        "Murugaboopathi Pillaiyar (BD/SWD-FSB6)","Nagaraj Pandian (BD/SWD-BEA9)",
+        "Divya Bharathi Rathnavel Pandian (BD/SWD-BEA10)","Pavithra Muralidharan (BD/SWD-BEA9)",
+        "Meenakshi Sundaram Prabhu (BD/SWD-BEA10)","Jayavelu Kola Arumugam (BD/SWD-BEA9)",
+        "Karpagam Vigginaraj (BD/SWD-BEA9)","EXTERNAL Velusamy Muthukumar (KGIS, BD/SWD-FSB6)",
+        "Vediappan P Raj (BD/SWD-BEA10)","Sri Dhanalakshmi Kamaraj (BD/SWD-BEA9)"
+    ]
+    # Allow custom name by typing "Other"
+    choice = st.selectbox("Pick your name (or type a new name below)", names_list + ["Other"])
+    if choice == "Other":
+        full_name = st.text_input("Enter your name")
+    else:
+        full_name = choice
+
+    if full_name and st.button("Continue"):
+        with st.spinner("Checking/creating user..."):
+            uid = get_or_create_user(full_name.strip())
+        if uid:
+            st.session_state["user_name"] = full_name.strip()
+            st.session_state["uid"] = uid
+            st.rerun()
+        else:
+            st.error("Could not find or create user. Please try again or contact support.")
+    st.stop()
+
+# --- After login, show standard layout ---
 st.title("🏋️ BD Fitness Challenge 2026 - Activity Tracker")
 st.markdown("**Quick select your name and start logging / editing activities.**")
 
-# Name selection (pre-populated list)
+# Name selection (available on all screens to switch users)
 names_list = [
-    "Remya R","Lokhsundar","Madhanreyan","Paulin","Thamarai","Prito","Boopathi","Nagaraj Pandiyan",
-    "Divya","Jayavelu","Karpagam V","Muthukumar","Raj V P","Sri Dhanalakshmi"
+    "Remya Rajaratnam (BD/SWD-BEA9)","Lokhsundar Balasubramaniam (BD/SWD-BEA9)",
+    "Madhanreyan V (BD/SWD-BEA9)","Paulin Nancy Pradeepa Prabhu (BD/SWD-BEA9)",
+    "Thamarai Govindasamy (BD/SWD-FSB6)","Prito Thamizh Selvan M (BD/SWD-BEA10)",
+    "Murugaboopathi Pillaiyar (BD/SWD-FSB6)","Nagaraj Pandian (BD/SWD-BEA9)",
+    "Divya Bharathi Rathnavel Pandian (BD/SWD-BEA10)","Pavithra Muralidharan (BD/SWD-BEA9)",
+    "Meenakshi Sundaram Prabhu (BD/SWD-BEA10)","Jayavelu Kola Arumugam (BD/SWD-BEA9)",
+    "Karpagam Vigginaraj (BD/SWD-BEA9)","EXTERNAL Velusamy Muthukumar (KGIS, BD/SWD-FSB6)",
+    "Vediappan P Raj (BD/SWD-BEA10)","Sri Dhanalakshmi Kamaraj (BD/SWD-BEA9)"
 ]
-# Allow custom name by typing "Other"
-choice = st.selectbox("Pick your name (or type a new name below)", names_list + ["Other"])
-if choice == "Other":
-    full_name = st.text_input("Enter your name")
-else:
-    full_name = choice
 
-if full_name and st.button("Continue"):
-    with st.spinner("Checking/creating user..."):
-        uid = get_or_create_user(full_name.strip())
-    if uid:
-        st.session_state["user_name"] = full_name.strip()
-        st.session_state["uid"] = uid
-        st.rerun()
-    else:
-        st.error("Could not find or create user. Please try again or contact support.")
+# Get current selection from session state
+current_selection = st.session_state.get("user_name", names_list[0])
+current_index = names_list.index(current_selection) if current_selection in names_list else 0
+
+# Allow user to switch between associates
+choice = st.selectbox("Pick your name (or type a new name below)", names_list + ["Other"], index=current_index, key="user_selector")
+if choice == "Other":
+    selected_name = st.text_input("Enter your name")
+else:
+    selected_name = choice
+
+# Update session if selection changed
+if selected_name and selected_name != st.session_state.get("user_name"):
+    if st.button("Switch User"):
+        with st.spinner("Switching user..."):
+            uid = get_or_create_user(selected_name.strip())
+        if uid:
+            st.session_state["user_name"] = selected_name.strip()
+            st.session_state["uid"] = uid
+            st.rerun()
+        else:
+            st.error("Could not find or create user. Please try again or contact support.")
 
 activities = [
         "Walking","Jogging","Running","Cycling","Trekking","Badminton","Pickle Ball","Volley Ball",
         "Gym","Yoga/Meditation","Dance","Swimming","Table Tennis","Tennis","Cricket","Football"
     ]
-
-if "user_name" not in st.session_state:
-    st.info("Select or type your name and click Continue to proceed.")
-    st.stop()
 
 uid = st.session_state["uid"]
 full_name = st.session_state["user_name"]
@@ -190,16 +544,82 @@ if menu == "Leaderboard":
     if df_lb.empty:
         st.info("No activity data for this month yet.")
     else:
-        # Highlight top 3
+        # Highlight top 3 with truncated names (no department)
+        import re
+        def strip_department(name):
+            return re.sub(r"\s*\([^)]*\)$", "", name).strip()
         top3 = df_lb.head(3)
         cols = st.columns(3)
         medals = ["🥇","🥈","🥉"]
         for i, (_, row) in enumerate(top3.iterrows()):
+            short_name = strip_department(row['Name'])
             with cols[i]:
-                st.markdown(f"### {medals[i]} {row['Name']}")
+                st.markdown(f"### {medals[i]} {short_name}")
                 st.metric("Points", row["Points"])
                 st.write(f"Active Days: {row['ActiveDays']}")
                 st.write(f"KM: {row['TotalKM']} | Mins: {row['TotalMins']}")
+
+        # Department leaderboard
+
+        import re
+        def extract_department(name):
+            # Extract the last parenthetical group as department
+            matches = re.findall(r'\(([^()]*)\)', name)
+            if matches:
+                return matches[-1].strip()
+            return "Unknown"
+        df_lb['Department'] = df_lb['Name'].apply(extract_department)
+        dept_agg = df_lb.groupby('Department').agg({
+            'Points': 'sum',
+            'ActiveDays': 'sum',
+            'TotalKM': 'sum',
+            'TotalMins': 'sum',
+            'Name': 'count'
+        }).rename(columns={'Name': 'Members'}).reset_index()
+        dept_agg = dept_agg.sort_values('Points', ascending=False).reset_index(drop=True)
+        dept_agg.index += 1
+        dept_agg.insert(0, 'Rank', dept_agg.index)
+
+        st.divider()
+        st.subheader("Top Performing Departments (This Month)")
+        top5_depts = dept_agg.head(5)
+        import plotly.express as px
+
+        # Show chart and table side by side, 50-50 split, with equal height and lollipop chart
+        col_chart, col_table = st.columns([1, 1], gap="medium")
+        import plotly.graph_objects as go
+        # Gauge charts for top 3 departments with distinct colors
+        top3_depts = dept_agg.head(3)
+        gauge_colors = ["#636EFA", "#EF553B", "#00CC96"]  # vibrant blue, orange, green
+        max_points = top3_depts["Points"].max() if not top3_depts.empty else 1
+        gauge_height = 250
+        gauge_width = 400
+        gauge_cols = st.columns(len(top3_depts))
+        for i, (idx, row) in enumerate(top3_depts.iterrows()):
+            fig = go.Figure(go.Indicator(
+                mode = "gauge+number+delta",
+                value = row["Points"],
+                delta = {"reference": max_points, "increasing": {"color": gauge_colors[i % len(gauge_colors)]}},
+                gauge = {
+                    "axis": {"range": [0, max_points], "tickwidth": 1, "tickcolor": gauge_colors[i % len(gauge_colors)]},
+                    "bar": {"color": gauge_colors[i % len(gauge_colors)]},
+                    "bgcolor": "white",
+                    "borderwidth": 2,
+                    "bordercolor": "gray",
+                },
+                title = {"text": row["Department"], "font": {"size": 20, "color": gauge_colors[i % len(gauge_colors)], "family": "Arial Black, Arial, sans-serif"}},
+                number = {"suffix": " pts", "font": {"color": gauge_colors[i % len(gauge_colors)], "size": 20}}
+            ))
+            fig.update_layout(margin=dict(l=10, r=10, t=60, b=10), height=gauge_height, width=gauge_width)
+            with gauge_cols[i]:
+                st.plotly_chart(fig, use_container_width=False, height=gauge_height, width=gauge_width)
+
+        # Table below gauges
+        st.dataframe(
+            top3_depts.head(3).reset_index(drop=True)[["Rank","Department","Points","ActiveDays","TotalKM","TotalMins","Members"]],
+            use_container_width=True,
+            hide_index=True
+        )
 
         st.divider()
         st.subheader("Full Leaderboard (This Month)")
@@ -214,9 +634,21 @@ elif menu == "Log Activity":
         dist = st.number_input("Distance (km)", min_value=0.0, step=0.1, format="%.2f")
         dur = st.number_input("Duration (mins)", min_value=0, step=1)
         d = st.date_input("Date", date.today())
+        attachment = st.file_uploader("Attachment (screenshot, Strava, etc.)", type=["png", "jpg", "jpeg"], key=f"log_activity_attachment_{uid}")
         submitted = st.form_submit_button("Save")
+    attachment_url = None
     if submitted:
-        payload = save_activity(uid, act, dist, dur, d.strftime("%Y-%m-%d"))
+        if attachment:
+            import os
+            from uuid import uuid4
+            img_folder = "activity_attachments"
+            os.makedirs(img_folder, exist_ok=True)
+            img_name = f"{uid}_{uuid4()}.{attachment.name.split('.')[-1]}"
+            img_path = os.path.join(img_folder, img_name)
+            with open(img_path, "wb") as f:
+                f.write(attachment.getbuffer())
+            attachment_url = img_path
+        payload = save_activity(uid, act, dist, dur, d.strftime("%Y-%m-%d"), attachment_url=attachment_url)
         st.success(f"Saved: {act} — {payload['points']} pts, {payload['calories']} kcal")
 
 # ---------- Edit / Delete Activities ----------
@@ -262,6 +694,7 @@ elif menu == "My History":
         df = pd.DataFrame(recs)
         df['date'] = pd.to_datetime(df['date'])
         df = df.sort_values('date')
+
         # summary cards
         total_points = df['points'].sum()
         total_km = df['distance'].sum()
@@ -278,6 +711,17 @@ elif menu == "My History":
         agg = df.groupby('activity_type')['points'].sum().reset_index().sort_values('points', ascending=False)
         fig_bar = px.bar(agg, x='activity_type', y='points', title="Points by Activity")
         st.plotly_chart(fig_bar, use_container_width=True)
+
+        # Show attachments if available
+        attachments = df[df['attachment_url'].notnull() & (df['attachment_url'] != '')] if 'attachment_url' in df.columns else pd.DataFrame()
+        st.divider()
+        st.subheader("Activity Attachments")
+        if not attachments.empty:
+            for idx, row in attachments.iterrows():
+                st.markdown(f"**{row['date'].strftime('%Y-%m-%d')} — {row['activity_type']}**")
+                st.image(row["attachment_url"], width=400)
+        else:
+            st.info("No attachments found.")
 
         # Monthly heatmap selector
         st.divider()
