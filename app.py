@@ -5,6 +5,12 @@ import pandas as pd
 import plotly.express as px
 from firebase_config import db
 from utils.activity_utils import calculate_points, calculate_calories
+from utils.auth_utils import (
+    authenticate_user, create_user_account, initialize_session, 
+    clear_session, is_authenticated, require_authentication, 
+    get_current_user, change_password, is_admin, get_all_users, 
+    AuthenticationError
+)
 
 
 # --- Enhanced Custom CSS for fitness theme ---
@@ -211,335 +217,664 @@ def heatmap_year(df_logs, year:int, value_col="points"):
 
 # ----------------- UI: main -----------------
 
-# --- Show attractive home page only when user not logged in ---
-if "user_name" not in st.session_state:
+# --- Authentication Gate: Show login/registration if not authenticated ---
+if not is_authenticated():
     st.markdown(
         """
         <style>
-        .bd-hero-container {
-            max-width: 900px;
-            margin: 1em auto;
-            background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
-            border-radius: 24px;
-            box-shadow: 0 12px 48px rgba(67,206,162,0.20);
-            overflow: hidden;
-            position: relative;
+        /* Clean professional background */
+        .stApp {
+            background: linear-gradient(to bottom right, #e8f5e9 0%, #ffffff 50%, #e3f2fd 100%);
         }
-        .bd-hero-top {
-            background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
-            padding: 1.2em 2em;
+        
+        /* Centered container */
+        .auth-wrapper {
+            max-width: 650px;
+            margin: 2em auto;
+        }
+        
+        /* Top header section */
+        .auth-header {
+            background: white;
+            padding: 2.5em 2em;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 1.5em;
+            text-align: center;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 1.5em;
         }
-        .bd-hero-logo {
-            display: flex;
-            align-items: center;
-            gap: 0.8em;
+        
+        .auth-side-icon {
+            width: 90px;
+            height: 90px;
+            object-fit: contain;
         }
-        .bd-hero-logo-img {
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            box-shadow: 0 4px 16px rgba(255,255,255,0.3);
-            animation: pulse 2s ease-in-out infinite;
+        
+        .auth-center-content {
+            flex: 1;
         }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+        
+        .auth-logo {
+            font-size: 3em;
+            margin-bottom: 0.2em;
         }
-        .bd-hero-logo-text h1 {
-            color: #fff !important;
-            font-size: 1.7em !important;
+        
+        .auth-title {
+            color: #2e7d32 !important;
+            font-size: 1.9em !important;
+            font-weight: 700 !important;
+            margin: 0 0 0.2em 0 !important;
+        }
+        
+        .auth-subtitle {
+            color: #757575 !important;
+            font-size: 0.95em !important;
             margin: 0 !important;
-            font-weight: 800 !important;
-            letter-spacing: 1px !important;
         }
-        .bd-hero-logo-text p {
-            color: rgba(255,255,255,0.95) !important;
-            font-size: 1em !important;
-            margin: 0.2em 0 0 0 !important;
-            font-weight: 600 !important;
-        }
-        .bd-hero-badge {
-            background: rgba(255,255,255,0.25);
-            color: #fff;
-            padding: 0.4em 1em;
-            border-radius: 16px;
-            font-size: 0.95em;
-            font-weight: 700;
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255,255,255,0.3);
-        }
-        .bd-hero-content {
-            display: flex;
-            flex-direction: row;
-            gap: 1.5em;
-            padding: 1.5em 2em 1.3em 2em;
-            justify-content: center;
-        }
-        .bd-hero-left {
-            flex: 1;
-            max-width: 600px;
-        }
-        .bd-hero-welcome {
-            font-size: 1.3em;
-            color: #185a9d;
-            font-weight: 700;
-            margin-bottom: 0.4em;
-        }
-        .bd-hero-desc {
-            font-size: 0.95em;
-            color: #444;
-            margin-bottom: 0.8em;
-            line-height: 1.5;
-        }
-        .bd-hero-features {
-            display: flex;
-            flex-direction: row;
-            gap: 0.6em;
-            margin-bottom: 0.8em;
-            flex-wrap: wrap;
-        }
-        .bd-hero-feature {
-            display: flex;
-            align-items: center;
-            gap: 0.5em;
-            background: rgba(67,206,162,0.08);
-            padding: 0.5em 0.7em;
-            border-radius: 8px;
-            border-left: 3px solid #43cea2;
-            flex: 1;
-            min-width: 120px;
-        }
-        .bd-hero-feature-icon {
-            font-size: 1.3em;
-        }
-        .bd-hero-feature-text {
-            font-size: 0.9em;
-            color: #185a9d;
-            font-weight: 600;
-        }
-        .bd-hero-quote {
-            font-size: 0.95em;
-            color: #43cea2;
-            font-weight: 600;
-            font-style: italic;
-            text-align: center;
-            margin: 0.6em 0;
-            padding: 0.6em;
-            background: rgba(67,206,162,0.08);
-            border-radius: 8px;
-        }
-        .bd-hero-right {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .bd-hero-illustration {
-            width: 100%;
-            max-width: 400px;
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(67,206,162,0.25);
-            margin-bottom: 1.5em;
-        }
-        .bd-hero-stats {
-            display: flex;
-            gap: 1.5em;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .bd-hero-stat {
-            background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
-            color: #fff;
-            padding: 1em 1.5em;
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 4px 16px rgba(67,206,162,0.25);
-            min-width: 100px;
-        }
-        .bd-hero-stat-value {
-            font-size: 2em;
-            font-weight: 700;
-        }
-        .bd-hero-stat-label {
-            font-size: 0.9em;
-            opacity: 0.95;
-            margin-top: 0.3em;
-        }
-        .bd-hero-form-container {
-            display: flex;
-            justify-content: center;
-            padding: 0 2em 1.5em 2em;
-        }
-        .bd-hero-form {
-            background: rgba(67,206,162,0.10);
-            padding: 1.2em;
-            border-radius: 12px;
-            border: 2px solid #43cea2;
-            box-shadow: 0 4px 16px rgba(67,206,162,0.15);
-            width: 100%;
-            max-width: 700px;
-        }
-        .bd-hero-form-container .stSelectbox,
-        .bd-hero-form-container .stTextInput {
-            max-width: 700px;
+        
+        /* Form section */
+        .auth-form-wrapper {
+            max-width: 450px;
             margin: 0 auto;
         }
-        .bd-hero-form-container .stButton {
-            display: flex;
+        
+        /* Tab buttons */
+        .stRadio {
+            margin-bottom: 1.5em;
+        }
+        
+        .stRadio > div {
             justify-content: center;
+            gap: 1em;
         }
-        .bd-hero-form-container .stButton>button {
-            max-width: 200px;
+        
+        .stRadio > div > label {
+            padding: 0.7em 3em !important;
+            background: white !important;
+            border: 2px solid #e0e0e0 !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            color: #616161 !important;
+            transition: all 0.2s !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        .bd-hero-form-title {
-            font-size: 1em;
-            color: #185a9d;
-            font-weight: 700;
-            margin-bottom: 0.5em;
-            text-align: center;
+        
+        .stRadio > div > label:hover {
+            border-color: #2e7d32 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(46,125,50,0.15);
         }
-        .bd-hero-form-desc {
-            font-size: 0.85em;
-            color: #444;
-            margin-bottom: 0.7em;
-            text-align: center;
+        
+        .stRadio input:checked + label {
+            background: #2e7d32 !important;
+            border-color: #2e7d32 !important;
+            color: white !important;
+        }
+        
+        /* Form card */
+        .stForm {
+            background: white;
+            padding: 2em;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        /* Input labels */
+        .stTextInput label,
+        .stSelectbox label {
+            color: #424242 !important;
+            font-weight: 600 !important;
+            font-size: 0.9em !important;
+        }
+        
+        /* Input fields */
+        .stTextInput > div > div > input {
+            border: 2px solid #e0e0e0 !important;
+            border-radius: 8px !important;
+            padding: 0.7em 0.9em !important;
+            font-size: 0.95em !important;
+            background: #fafafa !important;
+            transition: all 0.2s !important;
+            color: #333333 !important;
+        }
+        
+        /* Selectbox styling - comprehensive fix */
+        .stSelectbox > div > div {
+            border: 2px solid #e0e0e0 !important;
+            border-radius: 8px !important;
+            background: white !important;
+        }
+        
+        .stSelectbox * {
+            color: #333333 !important;
+        }
+        
+        .stSelectbox [data-baseweb="select"] {
+            background: white !important;
+        }
+        
+        .stSelectbox [data-baseweb="select"] > div {
+            background: white !important;
+            color: #333333 !important;
+        }
+        
+        .stSelectbox [data-baseweb="select"] > div > div {
+            color: #333333 !important;
+        }
+        
+        .stSelectbox svg {
+            fill: #333333 !important;
+        }
+        
+        /* Dropdown menu options */
+        [data-baseweb="menu"] {
+            background: white !important;
+        }
+        
+        [data-baseweb="menu"] li {
+            color: #333333 !important;
+            background: white !important;
+        }
+        
+        [data-baseweb="menu"] li:hover {
+            background: #f0f0f0 !important;
+        }
+        
+        .stTextInput > div > div > input:focus,
+        .stSelectbox > div > div:focus {
+            border-color: #2e7d32 !important;
+            background: white !important;
+            box-shadow: 0 0 0 3px rgba(46,125,50,0.1) !important;
+        }
+        
+        /* Submit button */
+        .stButton > button {
+            width: 100%;
+            background: #2e7d32 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 0.75em !important;
+            font-weight: 600 !important;
+            font-size: 1em !important;
+            margin-top: 1em !important;
+            transition: all 0.2s !important;
+        }
+        
+        .stButton > button:hover {
+            background: #1b5e20 !important;
+            box-shadow: 0 4px 12px rgba(46,125,50,0.3);
+            transform: translateY(-1px);
+        }
+        
+        /* Info messages */
+        .stAlert {
+            border-radius: 8px !important;
+            font-size: 0.9em !important;
+        }
+        
+        /* Hide default subheaders */
+        h3 {
+            display: none !important;
+        }
+        
+        /* Text styling */
+        .stMarkdown p {
+            font-size: 0.85em !important;
+            color: #757575 !important;
+            margin: 0.5em 0 !important;
+        }
+        
+        /* Column spacing */
+        [data-testid="column"] {
+            padding: 0 0.4em !important;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .auth-side-icon {
+                display: none;
+            }
+            .auth-header {
+                padding: 2em 1.5em;
+            }
         }
         </style>
-        <div class="bd-hero-container">
-            <div class="bd-hero-top">
-                <div class="bd-hero-logo">
-                    <img class="bd-hero-logo-img" src="https://cdn-icons-png.flaticon.com/512/1048/1048953.png" alt="Fitness">
-                    <div class="bd-hero-logo-text">
-                        <h1>BD Fitness Challenge 2026</h1>
-                        <p>Transform Your Health Journey</p>
-                    </div>
+        <div class="auth-wrapper">
+            <div class="auth-header">
+                <img src="https://cdn-icons-png.flaticon.com/512/2548/2548482.png" alt="Running" class="auth-side-icon">
+                <div class="auth-center-content">
+                    <div class="auth-logo">🏋️‍♂️</div>
+                    <h1 class="auth-title">BD Fitness Challenge</h1>
+                    <p class="auth-subtitle">Track your journey, achieve your goals</p>
                 </div>
-                <div class="bd-hero-badge">🏆 Join the Challenge!</div>
+                <img src="https://cdn-icons-png.flaticon.com/512/2936/2936886.png" alt="Cycling" class="auth-side-icon">
             </div>
-            <div class="bd-hero-content">
-                <div class="bd-hero-left">
-                    <div class="bd-hero-welcome">Welcome, Fitness Champion! 💪</div>
-                    <div class="bd-hero-desc">
-                        Track your daily activities, compete with your team, and achieve your fitness goals together!
-                    </div>
-                    <div class="bd-hero-features">
-                        <div class="bd-hero-feature">
-                            <div class="bd-hero-feature-icon">📊</div>
-                            <div class="bd-hero-feature-text">Track Activities</div>
-                        </div>
-                        <div class="bd-hero-feature">
-                            <div class="bd-hero-feature-icon">🏅</div>
-                            <div class="bd-hero-feature-text">Compete</div>
-                        </div>
-                        <div class="bd-hero-feature">
-                            <div class="bd-hero-feature-icon">📈</div>
-                            <div class="bd-hero-feature-text">Progress</div>
-                        </div>
-                    </div>
-                    <div class="bd-hero-quote">
-                        "The only bad workout is the one you didn't do."
-                    </div>
-                </div>
-            </div>
-            <div class="bd-hero-form-container">
-                <div class="bd-hero-form">
-                    <div class="bd-hero-form-title">🎯 Select Your Name to Continue</div>
-                    <div class="bd-hero-form-desc">Pick your name from the list below or type a new one</div>
-                </div>
-            </div>
-        </div>
+            <div class="auth-form-wrapper">
         """,
         unsafe_allow_html=True
     )
     
-    # Name selection (pre-populated list)
-    names_list = [
-        "Remya Rajaratnam (BD/SWD-BEA9)","Lokhsundar Balasubramaniam (BD/SWD-BEA9)",
-        "Madhanreyan V (BD/SWD-BEA9)","Paulin Nancy Pradeepa Prabhu (BD/SWD-BEA9)",
-        "Thamarai Govindasamy (BD/SWD-FSB6)","Prito Thamizh Selvan M (BD/SWD-BEA10)",
-        "Murugaboopathi Pillaiyar (BD/SWD-FSB6)","Nagaraj Pandian (BD/SWD-BEA9)",
-        "Divya Bharathi Rathnavel Pandian (BD/SWD-BEA10)","Pavithra Muralidharan (BD/SWD-BEA9)",
-        "Meenakshi Sundaram Prabhu (BD/SWD-BEA10)","Jayavelu Kola Arumugam (BD/SWD-BEA9)",
-        "Karpagam Vigginaraj (BD/SWD-BEA9)","EXTERNAL Velusamy Muthukumar (KGIS, BD/SWD-FSB6)",
-        "Vediappan P Raj (BD/SWD-BEA10)","Sri Dhanalakshmi Kamaraj (BD/SWD-BEA9)"
-    ]
-    # Allow custom name by typing "Other"
-    choice = st.selectbox("Pick your name (or type a new name below)", names_list + ["Other"])
-    if choice == "Other":
-        full_name = st.text_input("Enter your name")
-    else:
-        full_name = choice
-
-    if full_name and st.button("Continue"):
-        with st.spinner("Checking/creating user..."):
-            uid = get_or_create_user(full_name.strip())
-        if uid:
-            st.session_state["user_name"] = full_name.strip()
-            st.session_state["uid"] = uid
-            st.rerun()
-        else:
-            st.error("Could not find or create user. Please try again or contact support.")
+    # Tab selection for Login/Register
+    auth_tab = st.radio("", ["Login", "Register"], horizontal=True, label_visibility="collapsed")
+    
+    if auth_tab == "Login":
+        st.subheader("🔐 Login to Your Account")
+        
+        with st.form("login_form"):
+            email = st.text_input("Email", placeholder="your.email@example.com")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            submit = st.form_submit_button("Login", use_container_width=True)
+        
+        if submit:
+            if not email or not password:
+                st.error("Please enter both email and password")
+            else:
+                try:
+                    with st.spinner("Authenticating..."):
+                        user_data = authenticate_user(email, password)
+                        initialize_session(user_data)
+                        st.success(f"Welcome back, {user_data['full_name']}! 🎉")
+                        st.rerun()
+                except AuthenticationError as e:
+                    st.error(str(e))
+        
+        st.info("Don't have an account? Switch to Register tab above.")
+    
+    else:  # Register tab
+        with st.form("register_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                full_name = st.text_input("Full Name", placeholder="John Doe")
+            with col2:
+                email = st.text_input("Email", placeholder="your.email@example.com")
+            
+            # Department dropdown
+            department_options = ["BD/SWD-BEA9", "BD/SWD-BEA10", "BD/SWD-FSB5", "BD/SWD-FSB6"]
+            department = st.selectbox("Department", department_options, help="Select your department")
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                password = st.text_input("Password", type="password", placeholder="Min 8 chars")
+            with col4:
+                confirm_password = st.text_input("Confirm Password", type="password", placeholder="Re-enter")
+            
+            st.markdown("**Requirements:** 8+ chars, uppercase, lowercase, number")
+            
+            submit = st.form_submit_button("Create Account", use_container_width=True)
+        
+        if submit:
+            if not all([full_name, email, password, confirm_password, department]):
+                st.error("Please fill in all fields")
+            elif password != confirm_password:
+                st.error("Passwords do not match")
+            else:
+                try:
+                    with st.spinner("Creating your account..."):
+                        user_data = create_user_account(email, password, full_name, department)
+                        initialize_session(user_data)
+                        st.success(f"Account created successfully! Welcome, {full_name}! 🎉")
+                        st.balloons()
+                        st.rerun()
+                except AuthenticationError as e:
+                    st.error(str(e))
+        
+        st.info("Already have an account? Switch to Login tab above.")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
 # --- After login, show standard layout ---
 st.title("🏋️ BD Fitness Challenge 2026 - Activity Tracker")
-st.markdown("**Quick select your name and start logging / editing activities.**")
 
-# Name selection (available on all screens to switch users)
-names_list = [
-    "Remya Rajaratnam (BD/SWD-BEA9)","Lokhsundar Balasubramaniam (BD/SWD-BEA9)",
-    "Madhanreyan V (BD/SWD-BEA9)","Paulin Nancy Pradeepa Prabhu (BD/SWD-BEA9)",
-    "Thamarai Govindasamy (BD/SWD-FSB6)","Prito Thamizh Selvan M (BD/SWD-BEA10)",
-    "Murugaboopathi Pillaiyar (BD/SWD-FSB6)","Nagaraj Pandian (BD/SWD-BEA9)",
-    "Divya Bharathi Rathnavel Pandian (BD/SWD-BEA10)","Pavithra Muralidharan (BD/SWD-BEA9)",
-    "Meenakshi Sundaram Prabhu (BD/SWD-BEA10)","Jayavelu Kola Arumugam (BD/SWD-BEA9)",
-    "Karpagam Vigginaraj (BD/SWD-BEA9)","EXTERNAL Velusamy Muthukumar (KGIS, BD/SWD-FSB6)",
-    "Vediappan P Raj (BD/SWD-BEA10)","Sri Dhanalakshmi Kamaraj (BD/SWD-BEA9)"
-]
-
-# Get current selection from session state
-current_selection = st.session_state.get("user_name", names_list[0])
-current_index = names_list.index(current_selection) if current_selection in names_list else 0
-
-# Allow user to switch between associates
-choice = st.selectbox("Pick your name (or type a new name below)", names_list + ["Other"], index=current_index, key="user_selector")
-if choice == "Other":
-    selected_name = st.text_input("Enter your name")
-else:
-    selected_name = choice
-
-# Update session if selection changed
-if selected_name and selected_name != st.session_state.get("user_name"):
-    if st.button("Switch User"):
-        with st.spinner("Switching user..."):
-            uid = get_or_create_user(selected_name.strip())
-        if uid:
-            st.session_state["user_name"] = selected_name.strip()
-            st.session_state["uid"] = uid
-            st.rerun()
-        else:
-            st.error("Could not find or create user. Please try again or contact support.")
+# Get authenticated user details
+uid = st.session_state["uid"]
+full_name = st.session_state["user_name"]
 
 activities = [
         "Walking","Jogging","Running","Cycling","Trekking","Badminton","Pickle Ball","Volley Ball",
         "Gym","Yoga/Meditation","Dance","Swimming","Table Tennis","Tennis","Cricket","Football"
     ]
 
-uid = st.session_state["uid"]
-full_name = st.session_state["user_name"]
-
-# Sidebar navigation
+# Sidebar navigation with logout
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2764/2764434.png", width=100)
-st.sidebar.markdown(f"**Hello, {full_name}**")
-menu = st.sidebar.radio("Navigate", ["Leaderboard","Log Activity","Edit / Delete Activities","My History","Profile"])
+st.sidebar.markdown(f"**Hello, {full_name}** 👋")
+if st.session_state.get('is_admin', False):
+    st.sidebar.markdown("⭐ **Admin User**")
+st.sidebar.markdown("---")
+
+# Build menu items based on admin status
+menu_items = ["Leaderboard","Log Activity","Edit / Delete Activities","My History","Profile"]
+if st.session_state.get('is_admin', False):
+    menu_items.insert(0, "🔧 Admin Dashboard")
+
+menu = st.sidebar.radio("Navigate", menu_items)
+
+st.sidebar.markdown("---")
+if st.sidebar.button("🚪 Logout", use_container_width=True):
+    clear_session()
+    st.rerun()
+
+# ---------- Admin Dashboard ----------
+if menu == "🔧 Admin Dashboard":
+    if not st.session_state.get('is_admin', False):
+        st.error("⛔ Access Denied: Admin privileges required")
+        st.stop()
+    
+    st.header("🔧 Admin Dashboard")
+    st.markdown("**Administrative tools and oversight**")
+    
+    # Tab layout for different admin sections
+    admin_tab = st.tabs(["📊 Overview", "🔍 Review Activities", "👥 User Management", "📈 Statistics"])
+    
+    # Tab 1: Overview
+    with admin_tab[0]:
+        st.subheader("📊 System Overview")
+        
+        # Get all users and activities
+        all_users = get_all_users()
+        total_users = len(all_users)
+        active_users = len([u for u in all_users if u.get('last_login')])
+        admin_users = len([u for u in all_users if u.get('is_admin', False)])
+        
+        # Get total activities across all users
+        total_activities = 0
+        total_points = 0
+        total_distance = 0
+        
+        for user in all_users:
+            user_logs = fetch_user_logs(user['uid'])
+            total_activities += len(user_logs)
+            for log in user_logs:
+                total_points += log.get('points', 0)
+                total_distance += log.get('distance', 0)
+        
+        # Display metrics
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Users", total_users)
+        col2.metric("Active Users", active_users)
+        col3.metric("Total Activities", total_activities)
+        col4.metric("Admin Users", admin_users)
+        
+        col5, col6, col7, col8 = st.columns(4)
+        col5.metric("Total Points", round(total_points, 2))
+        col6.metric("Total KM", round(total_distance, 2))
+        col7.metric("Avg Activities/User", round(total_activities / max(total_users, 1), 1))
+        col8.metric("Avg Points/User", round(total_points / max(total_users, 1), 1))
+        
+        st.divider()
+        
+        # Recent activity summary
+        st.subheader("📅 Recent Activity Summary")
+        recent_logs = []
+        for user in all_users:
+            user_logs = fetch_user_logs(user['uid'])
+            for log in user_logs:
+                log['user_name'] = user.get('full_name', 'Unknown')
+                recent_logs.append(log)
+        
+        if recent_logs:
+            recent_df = pd.DataFrame(recent_logs)
+            recent_df['date'] = pd.to_datetime(recent_df['date'])
+            recent_df = recent_df.sort_values('date', ascending=False).head(20)
+            
+            display_df = recent_df[['date', 'user_name', 'activity_type', 'distance', 'duration', 'points']].copy()
+            display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No activities recorded yet")
+    
+    # Tab 2: Review Activities
+    with admin_tab[1]:
+        st.subheader("🔍 Review All Activities")
+        st.markdown("**View and manage activities from all users**")
+        
+        # User filter
+        all_users = get_all_users()
+        user_names = ["All Users"] + [u.get('full_name', 'Unknown') for u in all_users]
+        selected_user = st.selectbox("Filter by User", user_names)
+        
+        # Date filter
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input("From Date", value=date.today().replace(day=1))
+        with col2:
+            end_date = st.date_input("To Date", value=date.today())
+        
+        # Activity type filter
+        activity_types = ["All Types"] + activities
+        selected_activity = st.selectbox("Filter by Activity Type", activity_types)
+        
+        # Fetch and filter activities
+        all_activities = []
+        users_to_check = all_users if selected_user == "All Users" else [u for u in all_users if u.get('full_name') == selected_user]
+        
+        for user in users_to_check:
+            user_logs = fetch_user_logs(user['uid'])
+            for log in user_logs:
+                log['user_name'] = user.get('full_name', 'Unknown')
+                log['user_uid'] = user['uid']
+                all_activities.append(log)
+        
+        if all_activities:
+            activities_df = pd.DataFrame(all_activities)
+            activities_df['date'] = pd.to_datetime(activities_df['date'])
+            
+            # Apply filters
+            activities_df = activities_df[
+                (activities_df['date'].dt.date >= start_date) & 
+                (activities_df['date'].dt.date <= end_date)
+            ]
+            
+            if selected_activity != "All Types":
+                activities_df = activities_df[activities_df['activity_type'] == selected_activity]
+            
+            # Display count
+            st.markdown(f"**Found {len(activities_df)} activities**")
+            
+            if len(activities_df) > 0:
+                # Sort by date
+                activities_df = activities_df.sort_values('date', ascending=False)
+                
+                # Display in expandable format for detailed review
+                for idx, row in activities_df.iterrows():
+                    with st.expander(f"📅 {row['date'].strftime('%Y-%m-%d')} | 👤 {row['user_name']} | 🏃 {row['activity_type']} | ⭐ {row['points']} pts"):
+                        col1, col2, col3 = st.columns(3)
+                        col1.write(f"**Distance:** {row['distance']} km")
+                        col2.write(f"**Duration:** {row['duration']} mins")
+                        col3.write(f"**Calories:** {row.get('calories', 0)} kcal")
+                        
+                        # Show attachment if exists
+                        if row.get('attachment_url'):
+                            st.image(row['attachment_url'], width=400, caption="Activity Attachment")
+                        
+                        # Admin actions
+                        col_edit, col_delete = st.columns(2)
+                        
+                        if col_delete.button(f"🗑️ Delete", key=f"admin_del_{row['_id']}"):
+                            delete_activity(row['user_uid'], row['_id'])
+                            st.success("Activity deleted")
+                            st.rerun()
+            else:
+                st.info("No activities found matching the filters")
+        else:
+            st.info("No activities to review")
+    
+    # Tab 3: User Management
+    with admin_tab[2]:
+        st.subheader("👥 User Management")
+        st.markdown("**Manage user accounts and permissions**")
+        
+        all_users = get_all_users()
+        
+        if all_users:
+            users_df = pd.DataFrame(all_users)
+            
+            # Display user table
+            display_columns = ['full_name', 'email', 'department', 'is_admin', 'is_active', 'created_at', 'last_login']
+            available_columns = [col for col in display_columns if col in users_df.columns]
+            
+            # Format dates
+            if 'created_at' in users_df.columns:
+                users_df['created_at'] = pd.to_datetime(users_df['created_at']).dt.strftime('%Y-%m-%d')
+            if 'last_login' in users_df.columns:
+                users_df['last_login'] = pd.to_datetime(users_df['last_login']).dt.strftime('%Y-%m-%d %H:%M')
+            
+            # Fill missing columns
+            if 'is_admin' not in users_df.columns:
+                users_df['is_admin'] = False
+            if 'is_active' not in users_df.columns:
+                users_df['is_active'] = True
+            
+            st.dataframe(
+                users_df[available_columns], 
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            st.divider()
+            
+            # User details and actions
+            st.subheader("User Details & Actions")
+            selected_user_name = st.selectbox("Select User", [u.get('full_name', 'Unknown') for u in all_users])
+            
+            selected_user_data = next((u for u in all_users if u.get('full_name') == selected_user_name), None)
+            
+            if selected_user_data:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**User Information**")
+                    st.write(f"**Name:** {selected_user_data.get('full_name')}")
+                    st.write(f"**Email:** {selected_user_data.get('email')}")
+                    st.write(f"**Department:** {selected_user_data.get('department', 'N/A')}")
+                    st.write(f"**Status:** {'Active' if selected_user_data.get('is_active', True) else 'Inactive'}")
+                    st.write(f"**Admin:** {'Yes' if selected_user_data.get('is_admin', False) else 'No'}")
+                    st.write(f"**Created:** {selected_user_data.get('created_at', 'N/A')[:10]}")
+                    st.write(f"**Last Login:** {selected_user_data.get('last_login', 'N/A')[:16]}")
+                
+                with col2:
+                    st.markdown("**Activity Stats**")
+                    user_logs = fetch_user_logs(selected_user_data['uid'])
+                    total_acts = len(user_logs)
+                    total_pts = sum([log.get('points', 0) for log in user_logs])
+                    total_km = sum([log.get('distance', 0) for log in user_logs])
+                    
+                    st.write(f"**Total Activities:** {total_acts}")
+                    st.write(f"**Total Points:** {round(total_pts, 2)}")
+                    st.write(f"**Total Distance:** {round(total_km, 2)} km")
+                
+                st.divider()
+                
+                # Admin actions
+                st.markdown("**Administrative Actions**")
+                col_admin, col_status = st.columns(2)
+                
+                with col_admin:
+                    current_admin = selected_user_data.get('is_admin', False)
+                    if current_admin:
+                        if st.button(f"🔓 Remove Admin Rights", key=f"remove_admin_{selected_user_data['uid']}"):
+                            from utils.auth_utils import set_admin_status
+                            set_admin_status(selected_user_data['uid'], False)
+                            st.success("Admin rights removed")
+                            st.rerun()
+                    else:
+                        if st.button(f"⭐ Grant Admin Rights", key=f"grant_admin_{selected_user_data['uid']}"):
+                            from utils.auth_utils import set_admin_status
+                            set_admin_status(selected_user_data['uid'], True)
+                            st.success("Admin rights granted")
+                            st.rerun()
+                
+                with col_status:
+                    current_status = selected_user_data.get('is_active', True)
+                    if current_status:
+                        if st.button(f"🚫 Deactivate Account", key=f"deactivate_{selected_user_data['uid']}"):
+                            db.collection("users").document(selected_user_data['uid']).update({"is_active": False})
+                            st.warning("Account deactivated")
+                            st.rerun()
+                    else:
+                        if st.button(f"✅ Activate Account", key=f"activate_{selected_user_data['uid']}"):
+                            db.collection("users").document(selected_user_data['uid']).update({"is_active": True})
+                            st.success("Account activated")
+                            st.rerun()
+        else:
+            st.info("No users found")
+    
+    # Tab 4: Statistics
+    with admin_tab[3]:
+        st.subheader("📈 Detailed Statistics")
+        
+        all_users = get_all_users()
+        all_activities_list = []
+        
+        for user in all_users:
+            user_logs = fetch_user_logs(user['uid'])
+            for log in user_logs:
+                log['user_name'] = user.get('full_name', 'Unknown')
+                all_activities_list.append(log)
+        
+        if all_activities_list:
+            stats_df = pd.DataFrame(all_activities_list)
+            stats_df['date'] = pd.to_datetime(stats_df['date'])
+            
+            # Activity type distribution
+            st.markdown("**Activity Type Distribution**")
+            activity_counts = stats_df['activity_type'].value_counts()
+            fig_pie = px.pie(values=activity_counts.values, names=activity_counts.index, 
+                            title="Activities by Type")
+            st.plotly_chart(fig_pie, use_container_width=True)
+            
+            # Points by activity type
+            st.markdown("**Points by Activity Type**")
+            points_by_type = stats_df.groupby('activity_type')['points'].sum().sort_values(ascending=False)
+            fig_bar = px.bar(x=points_by_type.index, y=points_by_type.values,
+                           labels={'x': 'Activity Type', 'y': 'Total Points'},
+                           title="Total Points by Activity Type")
+            st.plotly_chart(fig_bar, use_container_width=True)
+            
+            # Activity trend over time
+            st.markdown("**Activity Trend Over Time**")
+            stats_df['month'] = stats_df['date'].dt.to_period('M').astype(str)
+            monthly_counts = stats_df.groupby('month').size()
+            fig_line = px.line(x=monthly_counts.index, y=monthly_counts.values,
+                             labels={'x': 'Month', 'y': 'Number of Activities'},
+                             title="Monthly Activity Trend")
+            st.plotly_chart(fig_line, use_container_width=True)
+            
+            # Top performers
+            st.markdown("**Top 10 Performers (All Time)**")
+            user_points = stats_df.groupby('user_name')['points'].sum().sort_values(ascending=False).head(10)
+            fig_top = px.bar(x=user_points.values, y=user_points.index, orientation='h',
+                           labels={'x': 'Total Points', 'y': 'User'},
+                           title="Top 10 Users by Points")
+            st.plotly_chart(fig_top, use_container_width=True)
+        else:
+            st.info("No activity data available for statistics")
 
 # ---------- Leaderboard ----------
-if menu == "Leaderboard":
-    st.header("🏆 Monthly Leaderboard")
+elif menu == "Leaderboard":
+    st.markdown(
+        """
+        <h2 style="color: #185a9d !important; 
+                   font-size: 2em !important; 
+                   font-weight: 700 !important;
+                   margin-bottom: 0.3em !important;">
+            🏆 Monthly Leaderboard
+        </h2>
+        <p style="color: #43cea2 !important; 
+                  font-size: 1em !important;
+                  font-weight: 500 !important;
+                  margin-top: 0 !important;
+                  margin-bottom: 1.5em !important;">
+            Track top performers and department rankings for this month
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
+    
     df_lb = monthly_aggregates()
     if df_lb.empty:
         st.info("No activity data for this month yet.")
@@ -562,13 +897,22 @@ if menu == "Leaderboard":
         # Department leaderboard
 
         import re
-        def extract_department(name):
-            # Extract the last parenthetical group as department
+        # Use stored department from user data, fallback to extracting from name
+        def get_user_department(uid):
+            user_doc = db.collection("users").document(uid).get()
+            if user_doc.exists:
+                dept = user_doc.to_dict().get('department')
+                if dept:
+                    return dept
+            # Fallback: extract from name
+            user_data = user_doc.to_dict() if user_doc.exists else {}
+            name = user_data.get('full_name', '')
             matches = re.findall(r'\(([^()]*)\)', name)
             if matches:
                 return matches[-1].strip()
             return "Unknown"
-        df_lb['Department'] = df_lb['Name'].apply(extract_department)
+        
+        df_lb['Department'] = df_lb['uid'].apply(get_user_department)
         dept_agg = df_lb.groupby('Department').agg({
             'Points': 'sum',
             'ActiveDays': 'sum',
@@ -765,6 +1109,9 @@ elif menu == "Profile":
     st.header("🧑‍💻 My Profile")
     user_doc = db.collection("users").document(uid).get()
     data = user_doc.to_dict() if user_doc.exists else {}
+    
+    # Basic Profile Information
+    st.subheader("Basic Information")
     with st.form("profile_form"):
         name = st.text_input("Full name", value=data.get("full_name", full_name))
         height = st.number_input("Height (cm)", value=float(data.get("height",0.0)))
@@ -778,3 +1125,31 @@ elif menu == "Profile":
         })
         st.success("Profile updated.")
         st.rerun()
+    
+    # Password Change Section
+    st.markdown("---")
+    st.subheader("🔒 Change Password")
+    with st.form("password_change_form"):
+        current_pwd = st.text_input("Current Password", type="password")
+        new_pwd = st.text_input("New Password", type="password", help="Min 8 chars, 1 uppercase, 1 lowercase, 1 number")
+        confirm_pwd = st.text_input("Confirm New Password", type="password")
+        change_pwd_submit = st.form_submit_button("Change Password")
+    
+    if change_pwd_submit:
+        if not all([current_pwd, new_pwd, confirm_pwd]):
+            st.error("Please fill in all password fields")
+        elif new_pwd != confirm_pwd:
+            st.error("New passwords do not match")
+        else:
+            try:
+                change_password(uid, current_pwd, new_pwd)
+                st.success("Password changed successfully! ✅")
+            except AuthenticationError as e:
+                st.error(str(e))
+    
+    # Account Information
+    st.markdown("---")
+    st.subheader("📊 Account Information")
+    st.write(f"**Email:** {data.get('email', 'N/A')}")
+    st.write(f"**Account Created:** {data.get('created_at', 'N/A')[:10] if data.get('created_at') else 'N/A'}")
+    st.write(f"**Last Login:** {data.get('last_login', 'N/A')[:10] if data.get('last_login') else 'N/A'}")

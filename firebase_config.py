@@ -16,7 +16,7 @@ firebaseConfig = {
 
 
 import os, json
-from firebase_admin import credentials, firestore, initialize_app, storage
+from firebase_admin import credentials, firestore, initialize_app, storage, auth
 
 
 # Read Firebase credentials from environment variable (for deployment) or local JSON file
@@ -33,3 +33,4 @@ firebase = initialize_app(cred, {
 
 db = firestore.client()
 bucket = storage.bucket()
+# Firebase Auth is automatically initialized with the app
