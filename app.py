@@ -568,7 +568,7 @@ if menu == "🔧 Admin Dashboard":
     st.markdown("**Administrative tools and oversight**")
     
     # Tab layout for different admin sections
-    admin_tab = st.tabs(["📊 Overview", "🔍 Review Activities", "👥 User Management", "📈 Statistics"])
+    admin_tab = st.tabs(["📊 Overview", "🔍 Review Activities", "➕ Add Activity for User", "👥 User Management", "📈 Statistics"])
     
     # Tab 1: Overview
     with admin_tab[0]:
@@ -681,20 +681,74 @@ if menu == "🔧 Admin Dashboard":
                 
                 # Display in expandable format for detailed review
                 for idx, row in activities_df.iterrows():
-                    with st.expander(f"📅 {row['date'].strftime('%Y-%m-%d')} | 👤 {row['user_name']} | 🏃 {row['activity_type']} | ⭐ {row['points']} pts"):
+                    # Check if added by admin
+                    admin_badge = " 🔧 Admin Added" if row.get('added_by_admin', False) else ""
+                    with st.expander(f"📅 {row['date'].strftime('%Y-%m-%d')} | 👤 {row['user_name']} | 🏃 {row['activity_type']} | ⭐ {row['points']} pts{admin_badge}"):
                         col1, col2, col3 = st.columns(3)
                         col1.write(f"**Distance:** {row['distance']} km")
                         col2.write(f"**Duration:** {row['duration']} mins")
                         col3.write(f"**Calories:** {row.get('calories', 0)} kcal")
                         
+                        # Show if added by admin
+                        if row.get('added_by_admin', False):
+                            admin_name = row.get('admin_name', 'Admin')
+                            st.info(f"🔧 This activity was added by admin: **{admin_name}**")
+                            if row.get('admin_notes'):
+                                st.write(f"**Admin Notes:** {row.get('admin_notes')}")
+                        
                         # Show attachment if exists
                         if row.get('attachment_url'):
                             st.image(row['attachment_url'], width=400, caption="Activity Attachment")
                         
-                        # Admin actions
-                        col_edit, col_delete = st.columns(2)
+                        # Admin actions - Edit and Delete
+                        st.markdown("---")
+                        st.markdown("**Admin Actions:**")
                         
-                        if col_delete.button(f"🗑️ Delete", key=f"admin_del_{row['_id']}"):
+                        # Edit section
+                        with st.expander("✏️ Edit Activity"):
+                            edit_col1, edit_col2 = st.columns(2)
+                            with edit_col1:
+                                edit_act = st.selectbox(
+                                    "Activity Type", 
+                                    activities, 
+                                    index=activities.index(row['activity_type']) if row['activity_type'] in activities else 0,
+                                    key=f"admin_edit_act_{row['_id']}"
+                                )
+                                edit_dist = st.number_input(
+                                    "Distance (km)", 
+                                    value=float(row['distance']), 
+                                    min_value=0.0, 
+                                    step=0.1,
+                                    key=f"admin_edit_dist_{row['_id']}"
+                                )
+                            with edit_col2:
+                                edit_dur = st.number_input(
+                                    "Duration (mins)", 
+                                    value=int(row['duration']), 
+                                    min_value=0, 
+                                    step=1,
+                                    key=f"admin_edit_dur_{row['_id']}"
+                                )
+                                edit_date = st.date_input(
+                                    "Date", 
+                                    value=row['date'].date(),
+                                    key=f"admin_edit_date_{row['_id']}"
+                                )
+                            
+                            if st.button(f"💾 Save Changes", key=f"admin_save_{row['_id']}"):
+                                save_activity(
+                                    row['user_uid'], 
+                                    edit_act, 
+                                    edit_dist, 
+                                    edit_dur, 
+                                    edit_date.strftime("%Y-%m-%d"), 
+                                    doc_id=row['_id']
+                                )
+                                st.success("Activity updated successfully!")
+                                st.rerun()
+                        
+                        # Delete button
+                        if st.button(f"🗑️ Delete Activity", key=f"admin_del_{row['_id']}"):
                             delete_activity(row['user_uid'], row['_id'])
                             st.success("Activity deleted")
                             st.rerun()
@@ -703,8 +757,133 @@ if menu == "🔧 Admin Dashboard":
         else:
             st.info("No activities to review")
     
-    # Tab 3: User Management
+    # Tab 3: Add Activity for User
     with admin_tab[2]:
+        st.subheader("➕ Add Activity for User")
+        st.markdown("**Add activity entries on behalf of any associate**")
+        
+        # Get all users for dropdown
+        all_users_for_add = get_all_users()
+        user_options = [(u.get('full_name', 'Unknown'), u['uid']) for u in all_users_for_add]
+        user_names_for_add = [u[0] for u in user_options]
+        
+        if user_names_for_add:
+            selected_user_for_activity = st.selectbox(
+                "Select Associate", 
+                user_names_for_add,
+                key="admin_add_activity_user"
+            )
+            
+            # Get the UID for the selected user
+            selected_user_uid = next((u[1] for u in user_options if u[0] == selected_user_for_activity), None)
+            
+            if selected_user_uid:
+                st.info(f"📝 Adding activity for: **{selected_user_for_activity}**")
+                
+                with st.form("admin_add_activity_form"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        admin_act = st.selectbox("Activity Type", activities, key="admin_activity_type")
+                        admin_dist = st.number_input("Distance (km)", min_value=0.0, step=0.1, format="%.2f", key="admin_distance")
+                    
+                    with col2:
+                        admin_dur = st.number_input("Duration (mins)", min_value=0, step=1, key="admin_duration")
+                        admin_date = st.date_input("Activity Date", date.today(), key="admin_date")
+                    
+                    # Optional attachment
+                    admin_attachment = st.file_uploader(
+                        "Attachment (screenshot, Strava, etc.)", 
+                        type=["png", "jpg", "jpeg"], 
+                        key="admin_activity_attachment"
+                    )
+                    
+                    # Additional notes field for admin
+                    admin_notes = st.text_area(
+                        "Admin Notes (optional)", 
+                        placeholder="E.g., 'Activity logged by admin on behalf of user'",
+                        key="admin_notes"
+                    )
+                    
+                    admin_submit = st.form_submit_button("➕ Add Activity", use_container_width=True)
+                
+                if admin_submit:
+                    if admin_dur == 0:
+                        st.error("Please enter a valid duration")
+                    else:
+                        admin_attachment_url = None
+                        if admin_attachment:
+                            import os
+                            from uuid import uuid4
+                            img_folder = "activity_attachments"
+                            os.makedirs(img_folder, exist_ok=True)
+                            img_name = f"{selected_user_uid}_{uuid4()}.{admin_attachment.name.split('.')[-1]}"
+                            img_path = os.path.join(img_folder, img_name)
+                            with open(img_path, "wb") as f:
+                                f.write(admin_attachment.getbuffer())
+                            admin_attachment_url = img_path
+                        
+                        # Calculate points and calories
+                        admin_points = float(calculate_points(admin_act, admin_dist, admin_dur))
+                        admin_calories = float(calculate_calories(admin_act, admin_dur))
+                        
+                        # Prepare payload
+                        admin_payload = {
+                            "activity_type": admin_act,
+                            "distance": float(admin_dist),
+                            "duration": int(admin_dur),
+                            "points": round(admin_points, 3),
+                            "calories": round(admin_calories, 1),
+                            "date": admin_date.strftime("%Y-%m-%d"),
+                            "updated_at": datetime.now().isoformat(),
+                            "added_by_admin": True,
+                            "admin_uid": uid,
+                            "admin_name": full_name
+                        }
+                        
+                        if admin_attachment_url:
+                            admin_payload["attachment_url"] = admin_attachment_url
+                        
+                        if admin_notes:
+                            admin_payload["admin_notes"] = admin_notes
+                        
+                        # Save to database
+                        db.collection("activities").document(selected_user_uid).collection("logs").add(admin_payload)
+                        
+                        st.success(f"✅ Activity added successfully for **{selected_user_for_activity}**!")
+                        st.info(f"📊 {admin_act} — {admin_points:.2f} pts, {admin_calories:.1f} kcal")
+                        st.balloons()
+                
+                # Show recent activities for the selected user
+                st.divider()
+                st.markdown(f"**📋 Recent Activities for {selected_user_for_activity}**")
+                
+                selected_user_logs = fetch_user_logs(selected_user_uid)
+                if selected_user_logs:
+                    selected_user_df = pd.DataFrame(selected_user_logs)
+                    selected_user_df['date'] = pd.to_datetime(selected_user_df['date'])
+                    selected_user_df = selected_user_df.sort_values('date', ascending=False).head(10)
+                    
+                    display_cols = ['date', 'activity_type', 'distance', 'duration', 'points', 'calories']
+                    if 'added_by_admin' in selected_user_df.columns:
+                        display_cols.append('added_by_admin')
+                    
+                    display_df = selected_user_df[display_cols].copy()
+                    display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+                    
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    
+                    # Summary stats
+                    total_user_pts = selected_user_df['points'].sum()
+                    total_user_km = selected_user_df['distance'].sum()
+                    st.markdown(f"**Recent 10 entries:** {total_user_pts:.2f} pts | {total_user_km:.2f} km")
+                else:
+                    st.info("No activities recorded for this user yet")
+        else:
+            st.warning("No users found in the system")
+    
+    # Tab 4: User Management
+    with admin_tab[3]:
         st.subheader("👥 User Management")
         st.markdown("**Manage user accounts and permissions**")
         
@@ -800,11 +979,43 @@ if menu == "🔧 Admin Dashboard":
                             db.collection("users").document(selected_user_data['uid']).update({"is_active": True})
                             st.success("Account activated")
                             st.rerun()
+                
+                st.divider()
+                
+                # Password Reset Section
+                st.markdown("**🔑 Password Reset**")
+                st.info(f"Reset password for: **{selected_user_data.get('full_name')}** ({selected_user_data.get('email')})")
+                
+                with st.form(key=f"reset_password_form_{selected_user_data['uid']}"):
+                    new_password = st.text_input("New Password", type="password", 
+                                                  placeholder="Enter new password (min 8 chars)")
+                    confirm_new_password = st.text_input("Confirm New Password", type="password",
+                                                          placeholder="Re-enter new password")
+                    
+                    st.markdown("**Password Requirements:** 8+ characters, uppercase, lowercase, number")
+                    
+                    reset_btn = st.form_submit_button("🔄 Reset Password", use_container_width=True)
+                    
+                    if reset_btn:
+                        if not new_password or not confirm_new_password:
+                            st.error("Please fill in both password fields")
+                        elif new_password != confirm_new_password:
+                            st.error("Passwords do not match")
+                        else:
+                            try:
+                                from utils.auth_utils import admin_reset_password, AuthenticationError
+                                admin_reset_password(selected_user_data['uid'], new_password)
+                                st.success(f"✅ Password reset successfully for {selected_user_data.get('full_name')}!")
+                                st.info("The user can now login with the new password.")
+                            except AuthenticationError as e:
+                                st.error(str(e))
+                            except Exception as e:
+                                st.error(f"Error resetting password: {str(e)}")
         else:
             st.info("No users found")
     
-    # Tab 4: Statistics
-    with admin_tab[3]:
+    # Tab 5: Statistics
+    with admin_tab[4]:
         st.subheader("📈 Detailed Statistics")
         
         all_users = get_all_users()

@@ -241,6 +241,44 @@ def is_admin() -> bool:
     return st.session_state.get('is_admin', False)
 
 
+def admin_reset_password(uid: str, new_password: str) -> bool:
+    """
+    Admin function to reset any user's password
+    Does NOT require current password - for admin use only
+    Returns: True if successful, raises AuthenticationError otherwise
+    """
+    try:
+        # Validate new password
+        is_valid, error_msg = validate_password(new_password)
+        if not is_valid:
+            raise AuthenticationError(error_msg)
+        
+        # Get user document
+        user_ref = db.collection("users").document(uid)
+        user_doc = user_ref.get()
+        
+        if not user_doc.exists:
+            raise AuthenticationError("User not found")
+        
+        # Hash new password
+        new_hash, new_salt = hash_password(new_password)
+        
+        # Update password in database
+        user_ref.update({
+            "password_hash": new_hash,
+            "password_salt": new_salt,
+            "password_updated_at": datetime.now().isoformat(),
+            "password_reset_by_admin": True
+        })
+        
+        return True
+        
+    except AuthenticationError:
+        raise
+    except Exception as e:
+        raise AuthenticationError(f"Error resetting password: {str(e)}")
+
+
 def change_password(uid: str, current_password: str, new_password: str) -> bool:
     """
     Change user password
