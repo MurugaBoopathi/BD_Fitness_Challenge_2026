@@ -143,9 +143,15 @@ def delete_activity(uid, doc_id):
     db.collection("activities").document(uid).collection("logs").document(doc_id).delete()
 
 # ----------------- Leaderboard helpers -----------------
-def monthly_aggregates():
-    """Return dataframe with Name, Points, ActiveDays, TotalKM, TotalMins for current month"""
-    current_month = datetime.now().strftime("%Y-%m")
+def monthly_aggregates(selected_month=None):
+    """Return dataframe with Name, Points, ActiveDays, TotalKM, TotalMins for specified month
+    
+    Args:
+        selected_month: Optional string in format "YYYY-MM". If None, uses current month.
+    """
+    if selected_month is None:
+        selected_month = datetime.now().strftime("%Y-%m")
+    
     users = list(db.collection("users").stream())
     rows = []
     for u in users:
@@ -159,7 +165,7 @@ def monthly_aggregates():
         for l in logs:
             rec = l.to_dict()
             d = rec.get("date","")
-            if d.startswith(current_month):
+            if d.startswith(selected_month):
                 pts += float(rec.get("points",0) or 0)
                 kms += float(rec.get("distance",0) or 0)
                 mins += int(rec.get("duration",0) or 0)
@@ -1080,13 +1086,85 @@ elif menu == "Leaderboard":
                   font-weight: 500 !important;
                   margin-top: 0 !important;
                   margin-bottom: 1.5em !important;">
-            Track top performers and department rankings for this month
+            Track top performers and department rankings by month
         </p>
         """,
         unsafe_allow_html=True
     )
     
-    df_lb = monthly_aggregates()
+    # Month selector with improved styling
+    from dateutil.relativedelta import relativedelta
+    current_date = datetime.now()
+    
+    # Generate list of months (last 12 months including current)
+    month_options = []
+    month_values = []
+    for i in range(12):
+        month_date = current_date - relativedelta(months=i)
+        month_str = month_date.strftime("%Y-%m")
+        month_display = month_date.strftime("%B %Y")
+        month_options.append(month_display)
+        month_values.append(month_str)
+    
+    # Create a styled container for month selection
+    st.markdown("""
+        <style>
+        div[data-testid="stSelectbox"] > label {
+            font-size: 1.1em !important;
+            font-weight: 600 !important;
+            color: #185a9d !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1.5, 1, 2.5])
+    with col1:
+        selected_month_display = st.selectbox(
+            "📅 Select Month",
+            options=month_options,
+            index=0,
+            help="Choose a month to view the leaderboard"
+        )
+    
+    # Get the corresponding month value
+    selected_month_idx = month_options.index(selected_month_display)
+    selected_month = month_values[selected_month_idx]
+    
+    # Display which month is selected with better styling
+    is_current_month = (selected_month == current_date.strftime("%Y-%m"))
+    with col2:
+        st.markdown("<div style='margin-top: 28px;'>", unsafe_allow_html=True)
+        if is_current_month:
+            st.markdown("""
+                <div style='background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%); 
+                            color: white; 
+                            padding: 10px 16px; 
+                            border-radius: 8px; 
+                            text-align: center;
+                            font-weight: 600;
+                            font-size: 0.95em;
+                            box-shadow: 0 2px 8px rgba(67,206,162,0.3);'>
+                    📊 Current
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+                <div style='background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%); 
+                            color: #222; 
+                            padding: 10px 16px; 
+                            border-radius: 8px; 
+                            text-align: center;
+                            font-weight: 600;
+                            font-size: 0.95em;
+                            box-shadow: 0 2px 8px rgba(255,215,0,0.3);'>
+                    📜 Historical
+                </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    df_lb = monthly_aggregates(selected_month)
     if df_lb.empty:
         st.info("No activity data for this month yet.")
     else:
@@ -1136,7 +1214,8 @@ elif menu == "Leaderboard":
         dept_agg.insert(0, 'Rank', dept_agg.index)
 
         st.divider()
-        st.subheader("Top Performing Departments (This Month)")
+        month_label = selected_month_display if 'selected_month_display' in locals() else "This Month"
+        st.subheader(f"Top Performing Departments ({month_label})")
         top5_depts = dept_agg.head(5)
         import plotly.express as px
 
@@ -1177,7 +1256,7 @@ elif menu == "Leaderboard":
         )
 
         st.divider()
-        st.subheader("Full Leaderboard (This Month)")
+        st.subheader(f"Full Leaderboard ({month_label})")
         st.dataframe(df_lb[["Rank","Name","Points","ActiveDays","TotalKM","TotalMins"]], use_container_width=True)
 
 # ---------- Log Activity ----------
