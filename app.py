@@ -706,12 +706,13 @@ if menu == "🔧 Admin Dashboard":
                                 st.write(f"**Admin Notes:** {row.get('admin_notes')}")
                         
                         # Show attachment if exists
-                        if row.get('attachment_url'):
+                        attachment_url = row.get('attachment_url')
+                        if attachment_url and isinstance(attachment_url, str):
                             import os
-                            if os.path.exists(row['attachment_url']):
-                                st.image(row['attachment_url'], width=400, caption="Activity Attachment")
+                            if os.path.exists(attachment_url):
+                                st.image(attachment_url, width=400, caption="Activity Attachment")
                             else:
-                                st.warning(f"⚠️ Attachment file not found: {row['attachment_url']}")
+                                st.warning(f"⚠️ Attachment file not found: {attachment_url}")
                         
                         # Admin actions - Edit and Delete
                         st.markdown("---")
@@ -1361,10 +1362,11 @@ elif menu == "My History":
             import os
             for idx, row in attachments.iterrows():
                 st.markdown(f"**{row['date'].strftime('%Y-%m-%d')} — {row['activity_type']}**")
-                if os.path.exists(row["attachment_url"]):
-                    st.image(row["attachment_url"], width=400)
-                else:
-                    st.warning(f"⚠️ Attachment file not found: {row['attachment_url']}")
+                attachment_url = row["attachment_url"]
+                if isinstance(attachment_url, str) and os.path.exists(attachment_url):
+                    st.image(attachment_url, width=400)
+                elif isinstance(attachment_url, str):
+                    st.warning(f"⚠️ Attachment file not found: {attachment_url}")
         else:
             st.info("No attachments found.")
 
