@@ -499,8 +499,11 @@ if not is_authenticated():
                 email = st.text_input("Email", placeholder="your.email@example.com")
             
             # Department dropdown
-            department_options = ["BD/SWD-BEA9", "BD/SWD-BEA10", "BD/SWD-FSB5", "BD/SWD-FSB6"]
+            department_options = ["BD/SWD-BEA6", "BD/SWD-BEA7", "BD/SWD-BEA8", "BD/SWD-BEA9", "BD/SWD-BEA10", "BD/SWD-FSB3", "BD/SWD-FSB4", "BD/SWD-FSB5", "BD/SWD-FSB6", "BD/SWD-ARC2"]
             department = st.selectbox("Department", department_options, help="Select your department")
+            
+            # Strava ID (optional)
+            strava_id = st.text_input("Strava ID (Optional)", placeholder="Your Strava athlete ID", help="Optional - Add your Strava ID for future integration")
             
             col3, col4 = st.columns(2)
             with col3:
@@ -520,7 +523,7 @@ if not is_authenticated():
             else:
                 try:
                     with st.spinner("Creating your account..."):
-                        user_data = create_user_account(email, password, full_name, department)
+                        user_data = create_user_account(email, password, full_name, department, strava_id)
                         initialize_session(user_data)
                         st.success(f"Account created successfully! Welcome, {full_name}! 🎉")
                         st.balloons()
@@ -704,7 +707,11 @@ if menu == "🔧 Admin Dashboard":
                         
                         # Show attachment if exists
                         if row.get('attachment_url'):
-                            st.image(row['attachment_url'], width=400, caption="Activity Attachment")
+                            import os
+                            if os.path.exists(row['attachment_url']):
+                                st.image(row['attachment_url'], width=400, caption="Activity Attachment")
+                            else:
+                                st.warning(f"⚠️ Attachment file not found: {row['attachment_url']}")
                         
                         # Admin actions - Edit and Delete
                         st.markdown("---")
@@ -1351,9 +1358,13 @@ elif menu == "My History":
         st.divider()
         st.subheader("Activity Attachments")
         if not attachments.empty:
+            import os
             for idx, row in attachments.iterrows():
                 st.markdown(f"**{row['date'].strftime('%Y-%m-%d')} — {row['activity_type']}**")
-                st.image(row["attachment_url"], width=400)
+                if os.path.exists(row["attachment_url"]):
+                    st.image(row["attachment_url"], width=400)
+                else:
+                    st.warning(f"⚠️ Attachment file not found: {row['attachment_url']}")
         else:
             st.info("No attachments found.")
 
@@ -1404,15 +1415,50 @@ elif menu == "Profile":
     st.subheader("Basic Information")
     with st.form("profile_form"):
         name = st.text_input("Full name", value=data.get("full_name", full_name))
-        height = st.number_input("Height (cm)", value=float(data.get("height",0.0)))
-        weight = st.number_input("Weight (kg)", value=float(data.get("weight",0.0)))
+        
+        # Department dropdown - allow users to update their department
+        department_options = ["BD/SWD-BEA6", "BD/SWD-BEA7", "BD/SWD-BEA8", "BD/SWD-BEA9", "BD/SWD-BEA10", "BD/SWD-FSB3", "BD/SWD-FSB4", "BD/SWD-FSB5", "BD/SWD-FSB6", "BD/SWD-ARC2"]
+        current_dept = data.get("department", "")
+        
+        # Set default index based on current department
+        if current_dept in department_options:
+            dept_index = department_options.index(current_dept)
+        else:
+            dept_index = 0
+        
+        department_profile = st.selectbox(
+            "Department", 
+            department_options, 
+            index=dept_index,
+            help="Select your department"
+        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            height = st.number_input("Height (cm)", value=float(data.get("height",0.0)))
+        with col2:
+            weight = st.number_input("Weight (kg)", value=float(data.get("weight",0.0)))
+        
+        strava_id_profile = st.text_input(
+            "Strava ID (Optional)", 
+            value=data.get("strava_id", ""),
+            placeholder="Your Strava athlete ID",
+            help="Add your Strava ID for future integration with Strava activities"
+        )
+        
         submitted = st.form_submit_button("Update Profile")
     if submitted:
-        db.collection("users").document(uid).update({
+        update_data = {
             "full_name": name,
+            "department": department_profile,
             "height": float(height),
             "weight": float(weight)
-        })
+        }
+        # Only add strava_id if it's not empty
+        if strava_id_profile:
+            update_data["strava_id"] = strava_id_profile.strip()
+        
+        db.collection("users").document(uid).update(update_data)
         st.success("Profile updated.")
         st.rerun()
     
@@ -1441,5 +1487,7 @@ elif menu == "Profile":
     st.markdown("---")
     st.subheader("📊 Account Information")
     st.write(f"**Email:** {data.get('email', 'N/A')}")
+    st.write(f"**Department:** {data.get('department', 'N/A')}")
+    st.write(f"**Strava ID:** {data.get('strava_id', 'Not linked') if data.get('strava_id') else 'Not linked'}")
     st.write(f"**Account Created:** {data.get('created_at', 'N/A')[:10] if data.get('created_at') else 'N/A'}")
     st.write(f"**Last Login:** {data.get('last_login', 'N/A')[:10] if data.get('last_login') else 'N/A'}")

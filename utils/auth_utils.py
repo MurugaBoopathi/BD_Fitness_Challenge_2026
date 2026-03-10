@@ -69,7 +69,7 @@ def validate_password(password: str) -> tuple:
     return True, ""
 
 
-def create_user_account(email: str, password: str, full_name: str, department: str = None) -> dict:
+def create_user_account(email: str, password: str, full_name: str, department: str = None, strava_id: str = None) -> dict:
     """
     Create a new user account with email and password
     Returns: user_data dict or raises AuthenticationError
@@ -116,6 +116,10 @@ def create_user_account(email: str, password: str, full_name: str, department: s
         # Add department if provided
         if department:
             user_data["department"] = department
+        
+        # Add Strava ID if provided
+        if strava_id and strava_id.strip():
+            user_data["strava_id"] = strava_id.strip()
         
         # Add to Firestore
         new_user_ref = users_ref.document()
